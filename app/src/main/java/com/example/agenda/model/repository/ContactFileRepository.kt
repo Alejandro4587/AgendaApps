@@ -5,80 +5,101 @@ import com.example.agenda.model.data.Contact
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.IOException
+
 
 
 class ContactFileRepository(private val context: Context) {
 
     private val fileName = "agenda.csv"
 
-    private fun getFile(): File = File(context.filesDir, fileName)
+    private fun getFile(): File {
+        return File(context.filesDir, fileName)
+    }
 
+    // LISTAR: Lee línea por línea con un bucle
+    suspend fun getAllContacts(): List<Contact> {
+        return withContext(Dispatchers.IO) {
+            val file = getFile()
 
-    suspend fun getAllContacts(): List<Contact> = withContext(Dispatchers.IO) {
-        val file = getFile()
-        if (!file.exists()) return@withContext emptyList()
+            // Si no existe el archivo, devolvemos lista vacía
+            if (!file.exists()) {
+                mutableListOf<Contact>()
+            } else {
+                val lista = mutableListOf<Contact>()
+                try {
+                    val lines = file.readLines()
 
-        val lista = mutableListOf<Contact>()
-        try {
-            file.readLines().forEach { line ->
-                val parts = line.split(",")
-                if (parts.size >= 3) {
-                    try {
-                        val id = parts[0].trim().toInt()
-                        val name = parts[1].trim()
-                        val phone = parts[2].trim()
-                        lista.add(Contact(id, name, phone))
-                    } catch (e: NumberFormatException) {
+                    for (line in lines) {
+                        val parts = line.split(",")
+                        if (parts.size >= 3) {
+                            val id = parts[0].toInt()
+                            val name = parts[1]
+                            val phone = parts[2]
+
+                            val contact = Contact(id, name, phone)
+                            lista.add(contact)
+                        }
                     }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                lista
+            }
+        }
+    }
+
+    // AÑADIR: Escribe al final del archivo
+    suspend fun addContact(contact: Contact) {
+        withContext(Dispatchers.IO) {
+            val file = getFile()
+            val linea = "${contact.id},${contact.name},${contact.phoneNumber}\n"
+            file.appendText(linea)
+        }
+    }
+
+    // EDITAR: Lee y modifica en memoria, borra archivo y escribe  de nuevo
+    suspend fun updateContact(updatedContact: Contact) {
+        withContext(Dispatchers.IO) {
+            val listaActual = getAllContacts() //
+            val listaNueva = mutableListOf<Contact>()
+
+            // 2. Recorremos buscando el que hay que cambiar
+            for (contact in listaActual) {
+                if (contact.id == updatedContact.id) {
+                    listaNueva.add(updatedContact)
+                } else {
+                    listaNueva.add(contact)
                 }
             }
-        } catch (e: IOException) {
-            e.printStackTrace()
+
+            // 3. Guardamos la lista nueva en el archivo
+            guardarListaEnArchivo(listaNueva)
         }
-        return@withContext lista
     }
 
+    // ELIMINAR: Lee y filtra el que no queremos, borra archivo y escribe el resto
+    suspend fun deleteContact(id: Int) {
+        withContext(Dispatchers.IO) {
+            val listaActual = getAllContacts()
+            val listaNueva = mutableListOf<Contact>()
 
-    suspend fun addContact(contact: Contact) = withContext(Dispatchers.IO) {
-        val file = getFile()
-        file.appendText("${contact.id},${contact.name},${contact.phoneNumber}\n")
-    }
-
-    suspend fun updateContact(updatedContact: Contact) = withContext(Dispatchers.IO) {
-        val currentList = getAllContacts().toMutableList()
-        var index = -1
-
-        for (i in currentList.indices) {
-            if (currentList[i].id == updatedContact.id) {
-                index = i
-                break
+            for (contact in listaActual) {
+                if (contact.id != id) {
+                    listaNueva.add(contact)
+                }
             }
-        }
 
-        if (index != -1) {
-            currentList[index] = updatedContact
-            rewriteFile(currentList)
+            guardarListaEnArchivo(listaNueva)
         }
     }
 
-
-    suspend fun deleteContact(id: Int) = withContext(Dispatchers.IO) {
-        val currentList = getAllContacts()
-        val newList = mutableListOf<Contact>()
-
-        for (contact in currentList) {
-            if (contact.id != id) {
-                newList.add(contact)
-            }
-        }
-        rewriteFile(newList)
-    }
-    private fun rewriteFile(contacts: List<Contact>) {
+    private fun guardarListaEnArchivo(contacts: List<Contact>) {
         val file = getFile()
         file.writeText("")
+
         for (contact in contacts) {
-            file.appendText("${contact.id},${contact.name},${contact.phoneNumber}\n")
+            val linea = "${contact.id},${contact.name},${contact.phoneNumber}\n"
+            file.appendText(linea)
         }
     }
 }

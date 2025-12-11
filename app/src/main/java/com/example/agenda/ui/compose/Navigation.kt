@@ -15,79 +15,64 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.agenda.model.data.Contact
 import com.example.agenda.model.repository.ContactFileRepository
-import com.example.agenda.ui.AddContactScreen
-import com.example.agenda.ui.EditContactScreen
-import com.example.agenda.ui.viewmodel.AgendaViewModelFactory
 import com.example.agenda.ui.viewmodel.ContactFileViewModel
 
 
 @Composable
 fun MainScreen() {
-    val context = LocalContext.current
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Navigation(innerPadding)
+    }
+}
 
+@Composable
+fun Navigation(innerPadding: PaddingValues) {
+    val navController = rememberNavController()
+    val context = LocalContext.current
+    val repository = ContactFileRepository(context)
 
     val viewModel: ContactFileViewModel = viewModel(
-        factory = AgendaViewModelFactory(context)
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return ContactFileViewModel(repository) as T
+            }
+        }
     )
 
+    NavHost(
+        navController = navController,
+        startDestination = "home",
+        modifier = Modifier.padding(innerPadding)
+    ) {
 
-    val navController = rememberNavController()
+        composable("home") {
+            HomeScreen(
+                viewModel = viewModel,
+                onAddClick = { navController.navigate("add") },
+                onEditClick = { id -> navController.navigate("edit/$id") }
+            )
+        }
 
+        composable("add") {
+            AddContact(
+                navController = navController,
+                viewModel = viewModel,
+                innerPadding = innerPadding
+            )
+        }
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-        NavHost(
-            navController = navController,
-            startDestination = "home", // Nombre de ruta simplificado
-            modifier = Modifier.padding(innerPadding) // Aplicamos el padding aquí
-        ) {
-
-
-            composable("home") {
-
-                HomeScreen(
-                    viewModel = viewModel,
-                    onAddClick = { navController.navigate("add") },
-                    onEditClick = { id -> navController.navigate("edit/$id") }
-                )
-            }
-
-
-            composable("add") {
-                AddContactScreen(
-                    onSave = { name, phone ->
-                        viewModel.addContact(name, phone)
-                        navController.popBackStack()
-                    },
-                    onCancel = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                route = "edit/{contactId}",
-                arguments = listOf(navArgument("contactId") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val id = backStackEntry.arguments?.getInt("contactId") ?: 0
-
-                val contact = viewModel.getContactById(id)
-
-                if (contact != null) {
-                    EditContactScreen(
-                        contact = contact,
-                        onSave = { name, phone ->
-                            viewModel.editContact(id, name, phone)
-                            navController.popBackStack()
-                        },
-                        onDelete = {
-                            viewModel.deleteContact(id)
-                            navController.popBackStack()
-                        },
-                        onCancel = { navController.popBackStack() }
-                    )
-                }
-            }
+        composable(
+            route = "edit/{contactId}",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getInt("contactId") ?: 0
+            EditContact(
+                navController = navController,
+                viewModel = viewModel,
+                innerPadding = innerPadding,
+                id = id
+            )
         }
     }
 }

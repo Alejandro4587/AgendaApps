@@ -26,23 +26,16 @@ class ContactFileViewModel(private val repository: ContactFileRepository) : View
 
     fun addContact(name: String, phone: String) {
         viewModelScope.launch {
-
             val currentList = _uiState.value
 
-            var maxId = 0
-            for (contact in currentList) {
-                if (contact.id > maxId) {
-                    maxId = contact.id
-                }
+            // Calculamos el ID aquí
+            val usedIds = currentList.map { it.id }.toSet()
+            var newId = 1
+            while (usedIds.contains(newId)) {
+                newId++
             }
-            val newId = if (currentList.isEmpty()) 1 else maxId + 1
 
-
-            val newContact = Contact(newId, name, phone)
-
-
-            repository.addContact(newContact)
-
+            repository.addContact(Contact(newId, name, phone))
             loadContacts()
         }
     }

@@ -1,16 +1,15 @@
 package com.example.agenda.ui.compose
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,60 +32,47 @@ fun EditContact(
     innerPadding: PaddingValues,
     id: Int
 ) {
-
     val contact = viewModel.getContactById(id)
 
-
     if (contact == null) {
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-            Text("Error: Contacto no encontrado")
-        }
+        Text("Error cargando contacto")
         return
     }
-
 
     var name by remember { mutableStateOf(contact.name) }
     var phone by remember { mutableStateOf(contact.phoneNumber) }
 
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)
     ) {
-        Text(
-            text = "Edit Contact",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Text(text = "Edit Contact", style = MaterialTheme.typography.headlineMedium)
+
         OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Name") },
+            value = name, onValueChange = { name = it }, label = { Text("Name") },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            label = { Text("Phone") },
+            value = phone, onValueChange = { phone = it }, label = { Text("Phone") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
         )
 
-        Button(onClick = {
+        Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = {
+                viewModel.deleteContact(id)
+                navController.popBackStack()
+            }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                Text("Delete")
+            }
 
-            viewModel.editContact(id, name, phone)
-
-            navController.popBackStack()
-        }) {
-            Text("Save")
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = { navController.popBackStack() }) {
-            Text("Back")
+            Button(onClick = {
+                viewModel.editContact(id, name, phone)
+                navController.popBackStack()
+            }) {
+                Text("Save")
+            }
         }
     }
 }
